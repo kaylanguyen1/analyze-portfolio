@@ -1,2 +1,5 @@
 streamlit
 yfinance
+scipy
+tensorflow
+scikit-learn

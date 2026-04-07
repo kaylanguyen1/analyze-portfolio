@@ -1,0 +1,14 @@
+[theme]
+base="light"
+primaryColor = "#cb785c"
+backgroundColor = "#fdfdf8"
+secondaryBackgroundColor = "#ecebe3"
+borderColor = "gray"
+showWidgetBorder = true
+baseRadius = "0.75rem"
+buttonRadius = "full"
+textColor = "#3d3a2a"
+font="serif"
+headingFont = "serif"
+dataframeHeaderBackgroundColor = "#F2E7DC"
+chartCategoricalColors = ["#89b7a9", "#4d9baf", "#4137e0", "#229cd0", "#be4f3b", "#a82355", "#737bbb", "#dfe90d"]
