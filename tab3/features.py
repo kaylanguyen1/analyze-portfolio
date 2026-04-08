@@ -1,16 +1,9 @@
 import pandas as pd
 import yfinance as yf
 import numpy as np
+import streamlit as st
 
-# DELETE AFTER TESTING
-def create_portfolio(upload_file):
-    portfolio = pd.read_csv(upload_file)
-    portfolio["avg_cost"] = portfolio["total_cost_basis"] / portfolio["shares"]
-    portfolio["acquisition_date"] = pd.to_datetime(portfolio["acquisition_date"])
-    portfolio["acquisition_date"] = portfolio["acquisition_date"].dt.date
-    
-    return portfolio
-
+@st.cache_data
 def get_ticker_info(tickers):
     all_info = []
     for ticker in tickers:
@@ -18,17 +11,17 @@ def get_ticker_info(tickers):
         info_dict['ticker'] = ticker
         var = yf.Ticker(ticker)
         info = var.info
+        quoteType = info.get('quoteType', 'N/A')
         
-        if info['quoteType'] == 'EQUITY':
+        if quoteType == 'EQUITY':
             features = get_stock_info(ticker, info, info_dict)
+            print("Ticker: ", ticker)
+            print("Features: ", features)
         else:
             features = get_fund_info(ticker, var, info, info_dict)
         all_info.append(features)
-        #print(ticker)
-        #print(features)
         
     return all_info
-
 
 def get_stock_info(ticker, ticker_info, info_dict):
     info_dict['region'] = ticker_info.get('country', 'N/A')
@@ -58,6 +51,7 @@ def standardize_stocks(ticker, info_dict):
     features['growth_score'] = growth
     features['value_score'] = value
     momentum, vol = compute_mo_vol(ticker)
+    print("momentum: ", momentum)
     features['momentum'] = momentum
     features['volatility'] = vol
     features['sector_vector'] = standard_sectors(info_dict)
@@ -141,14 +135,21 @@ def compute_mo_vol(ticker):
     if len(data) < 60:
         return 0.0, 0.0
 
-    price_now = data["Close"].iloc[-1]
-    price_past = data["Close"].iloc[-60]
-
-    price_now = float(price_now.iloc[0])
-    price_past = float(price_past.iloc[0])
+    #price_now = data["Close"].iloc[-1]
+    #price_past = data["Close"].iloc[-60]
+    #price_now = float(price_now.iloc[0])
+    #price_past = float(price_past.iloc[0])
+    
+    close = data["Close"]
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
+    price_now = float(close.iloc[-1])
+    price_past = float(close.iloc[-60])
+    print("price_now: ", price_now)
+    print("price_past: ", price_past)
     momentum = (price_now / price_past) - 1
     
-    returns = data["Close"].pct_change().dropna()
+    returns = data["Close"].pct_change(fill_method=None)
     vol = returns.std() * np.sqrt(252)
     vol = float(vol.iloc[0])
     
@@ -192,14 +193,4 @@ def fund_mkt_growth_value(info_dict):
         growth, value = 0.5, 0.5
     
     return float(cat), growth, value
-    
 
-def main():
-    upload = "holdings.csv"
-    portfolio = create_portfolio(upload)       
-    get_ticker_info(portfolio['ticker'])
-    
-    
-
-if __name__=="__main__":
-    main()

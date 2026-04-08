@@ -6,9 +6,14 @@ from datetime import datetime
 import numpy as np
 import math
 import scipy.optimize as sco
+import sys
 from optimize import optimize, compare
 from metrics import compute_metrics
 from recs import generate_recs
+from tab3 import features, model, risk_model
+import plotly.express as px
+import plotly.graph_objects as go
+
 
 def main():
     # Make page content full width, must be first streamlit call in program
@@ -20,8 +25,8 @@ def main():
     .block-container {
         padding-top: 1rem;
         padding-bottom: 3rem;
-        padding-left: 3rem;
-        padding-right: 3rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
     }
     </style>            
     """, unsafe_allow_html=True)
@@ -38,7 +43,7 @@ def main():
     
     # Website title and site organization
     st.title("Investment Dashboard")
-    tab1, tab2, tab3 = st.tabs(["Overview", "Portfolio Optimization", "Tab 3"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Portfolio Optimization", "Portfolio Classification", "Future Allocation"])
     
     # Content in Overview tab
     with tab1:
@@ -86,12 +91,13 @@ def main():
             col2.header("Returns", divider="grey")
             col2.write(returns_df)
             
+    # Tab 2 Content
             with tab2:
                 col8, col9 = st.columns([1, 2])
                 #Calculate optimized weights for portfolio using Sharpe ratio
                 col8.subheader("Define Max Allocation Per Stock (%)", help="Move the slider below to see what the optimal portfolio would be given a maximum amount a stock can hold. Adding a max allocation for each stock helps with diversification, which can minimize risk and increase return across your portoflio.")
                 max_bound = col8.slider(
-                    "",
+                    "Drag slider to adjust max allocation",
                     min_value=10,  # 10%
                     max_value=100, # 100%
                     value=50,      # Default 50%
@@ -143,6 +149,18 @@ def main():
                         st.write("No recommendations available due to current portfolio's value being greater than portfolio options from the Efficient Frontier. To explore more options, move the slider for max allocation.")
                     else:
                         recs_as_metric(recs_ret, portfolio["ticker"])
+         
+    # Tab 3 Content    
+            with tab3:
+                # ADD SOME STREAMLIT LOADING 
+                st.header("Portfolio Features", divider="gray", help="Features of portfolio created by combining features of its stocks and funds by their weight.")
+                ticker_features = features.get_ticker_info(portfolio['ticker'])
+ 
+                beta, volatility, momentum, sector_fig, breakdown_fig = classify_portfolio(portfolio['ticker'], weights, ticker_features)
+                monthly_vol, month_change = create_risk_model(portfolio['ticker'], weights)
+                
+                format_tab3(beta, volatility, momentum, sector_fig, breakdown_fig, monthly_vol, month_change)
+                
                 
             
 def create_portfolio(upload_file):
@@ -209,18 +227,16 @@ def get_gain_loss(portfolio, returns_df, portfolio_returns):
     )
     
 def disp_current(metrics, col):
-    #col5.metric("Difference in Return", f"${value_diff}", f"{return_diff}%", border=True, help="Difference between current and optimized portfolio values")
-
     initial_val = round(metrics["initial_value"], 2)
     curr_final = round(metrics["current_final"], 2)
     curr_ret = round(metrics["current_return"], 2)
-    curr_vol = round(metrics["current_vol"], 2)
+    curr_vol = round((metrics["current_vol"] * 100), 2)
     curr_sharpe = round(metrics["current_sharpe"], 2)
     
     col1, col2, col3, col4 = col.columns(4)
     col1.metric("Initial Value", f"${initial_val}", border=True, help="Initial value of portfolio")
     col2.metric("Value", f"${curr_final}", f"{curr_ret}%", border=True, help="Value and return of current portfolio")
-    col3.metric("Volatility", f"{curr_vol}%", border=True, help="Volatility of current portfolio")
+    col3.metric("Volatility", f"{curr_vol}%", border=True, help="Historical volatility of portfolio ")
     col4.metric("Sharpe", f"{curr_sharpe}", border=True, help="Sharpe ratio of current portfolio")
     
     return curr_final, curr_sharpe
@@ -271,6 +287,87 @@ def recs_as_metric(recs_list, tickers):
             else:
                 col.empty()
 
+@st.cache_data
+def classify_portfolio(tickers, weights, features_list):
+    beta, volatility, momentum, sectors, breakdown = model.get_portfolio_classification(tickers, weights, features_list)
+    
+    # Label sector names from sector vector passed in
+    sector_names = ["Technology", "Financial Services", "Consumer Cyclical", "Communication Services", "Healthcare", "Industrials", 
+               "Energy", "Consumer Defensive", "Basic Materials", "Utilities", "Real Estate"]
+    sectors_dict = dict(zip(sector_names, sectors.tolist()))
+    sectors_df = pd.DataFrame(list(sectors_dict.items()), columns=["Sector", "Percent"])
+    sectors_df["Percent"] = (sectors_df["Percent"] * 100).round(3)
+    sector_fig = px.pie(sectors_df, values="Percent", names="Sector", 
+                    color_discrete_sequence=["#40826D", "#93C572", "#478778",
+                                             "#50C878", "#AFE1AF", "#AAFF00",
+                                             "#4F7942", "#00A36C", "#98FB98",
+                                             "#B4C424", "#009E60"])
+    sector_fig.update_traces(textinfo="label")
+    sector_fig.update_traces(hovertemplate="%{label}: %{value:.3f}%")
+    sector_fig.update_layout(
+        legend=dict(
+            x=1,
+            xanchor='left',
+            y=1,
+            yanchor='top'
+        )
+    )
+    
+    
+    # Label breakdown indices with their investment style
+    label_map = {
+        0: "Blend", 
+        1: "Growth", 
+        2: "Value"
+    }
+    labeled_breakdown = {
+        label_map[k]: float(np.squeeze(v)) for k, v in breakdown.items()
+    }
+    breakdown_df = pd.DataFrame(list(labeled_breakdown.items()), columns=["Style", "Percent"])
+    breakdown_df["Percent"] = (breakdown_df["Percent"] * 100).round(3)
+    breakdown_fig = go.Figure()
+    breakdown_fig = px.pie(breakdown_df, values="Percent", names="Style", 
+                           color_discrete_sequence=["#6F8FAF", "#89CFF0", "#0F52BA"])
+    breakdown_fig.update_traces(textinfo="label")
+    breakdown_fig.update_traces(hovertemplate="%{label}: %{value:.3f}%")
+    breakdown_fig.update_layout(
+        legend=dict(
+            x=1,
+            xanchor='left',
+            y=1,
+            yanchor='top'
+        )
+    )
+    
+    return beta, volatility, momentum, sector_fig, breakdown_fig
+
+def format_tab3(beta, vol, momentum, sector_fig, breakdown_fig, monthly_vol, month_change):
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Beta", f"{beta:.3f}", border=True, help="A beta measures how volatile an investment is compared to the entire market. The portfolio's beta was computed through the summation of the beta values of each individual investment multiplied by its weight in the portfolio.")
+    col2.metric("Annual Volatility", f"{(vol*100):.2f}%", border=True, help="Volatility was computed through the summation of each individual investment's volatility multiplied by its weight.")
+    col3.metric("Momentum", f"{momentum:.3f}", border=True, help="Momentum measures the recent performance of an investment, and this value was computed through the summation of the momentum from each individual investment multiplied by its weight.")
+    col4.metric("Next Month's Expected Volatility", f"{(monthly_vol * 100):.2f}%", f"{month_change:.2f}%", border=True) 
+    
+    col4, col5 = st.columns([1.75, 1], border=True)
+    with col4:
+        st.subheader("Portfolio Sector Breakdown", divider="gray", help="Sector breakdown of entire portfolio.")
+        st.plotly_chart(sector_fig)
+    
+    with col5:
+        st.subheader("Portfolio Classification", divider="gray", help="Investments can be classified by their growth potential, valuation, or a mix of both. The below classification was created using a Random Forest algorithm, where each individual investment was classified by a model using its features.")
+        st.plotly_chart(breakdown_fig)
+        st.caption("""There are three categories for classifying the styles towards which investment instruments are oriented: growth, value, and blended. 
+                   The growth style is known for its capital gains potential, where their value is expected to grow sales and earnings at a faster rate than the market average; 
+                   however, this style's high returns also makes it risky. The value style is known for its stability and dividend income, offering long-term growth opportunities.
+                   The blended style combines both growth and value investments, which offers diversification benefits due to its mix of capital gains and stability.
+                   """)
+             
+         
+
+def create_risk_model(tickers, weights):
+    monthly_vol, month_change = risk_model.get_risk_model(tickers, weights)
+    
+    return monthly_vol, month_change
 
     
 if __name__=="__main__":
