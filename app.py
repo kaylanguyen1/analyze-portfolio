@@ -1,18 +1,21 @@
 import streamlit as st
 from streamlit_extras.metric_cards import style_metric_cards
+from streamlit_extras.card_selector import card_selector
 import pandas as pd
 import yfinance as yf
 from datetime import datetime
 import numpy as np
 import math
 import scipy.optimize as sco
-import sys
 from optimize import optimize, compare
-from metrics import compute_metrics
+from metrics import compute_metrics, compute_rec_metrics
 from recs import generate_recs
 from tab3 import features, model, risk_model
+from tab4 import ticker_analysis
 import plotly.express as px
 import plotly.graph_objects as go
+
+from tab4 import allocation
 
 
 def main():
@@ -35,27 +38,25 @@ def main():
     st.markdown("""
     <style>
     [data-testid="stMetricValue"] {
-        font-size: 1.8rem;
+        font-size: clamp(1.8rem, 1.9vw, 2rem);
     }
     </style>
     """, unsafe_allow_html=True)
     style_metric_cards(background_color="#fdfdf8", border_color="##cb785c", border_left_color="#cb785c")
-    
+
     # Website title and site organization
     st.title("Investment Dashboard")
-    tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Portfolio Optimization", "Portfolio Classification", "Future Allocation"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Portfolio Optimization", "Portfolio Classification", "Recommendations"])
     
-    # Content in Overview tab
+    # TAB 1 CONTENT
     with tab1:
         #Ask user to upload a csv file of their stocks
         st.subheader("File Upload", divider="gray")
-        #upload = st.file_uploader("""Upload a CSV file containing a stock portfolio using the following format for each item: 
-        #        ticker,shares,total_cost_basis,acquisition_date""")
-        test_val = True
-        upload = "holdings.csv"
+        upload = st.file_uploader("""Upload a CSV file containing a stock portfolio using the following format for each item: 
+                ticker,shares,total_cost_basis,acquisition_date""")
 
         #If upload is successful, read the csv into a dataframe named portfolio
-        if test_val:
+        if upload:
             portfolio = create_portfolio(upload)
             
             price_data_df = create_price_data(portfolio)
@@ -91,7 +92,7 @@ def main():
             col2.header("Returns", divider="grey")
             col2.write(returns_df)
             
-    # Tab 2 Content
+    # TAB 2 CONTENT
             with tab2:
                 col8, col9 = st.columns([1, 2])
                 #Calculate optimized weights for portfolio using Sharpe ratio
@@ -150,9 +151,8 @@ def main():
                     else:
                         recs_as_metric(recs_ret, portfolio["ticker"])
          
-    # Tab 3 Content    
+    # TAB 3 CONTENT  
             with tab3:
-                # ADD SOME STREAMLIT LOADING 
                 st.header("Portfolio Features", divider="gray", help="Features of portfolio created by combining features of its stocks and funds by their weight.")
                 ticker_features = features.get_ticker_info(portfolio['ticker'])
  
@@ -160,7 +160,41 @@ def main():
                 monthly_vol, month_change = create_risk_model(portfolio['ticker'], weights)
                 
                 format_tab3(beta, volatility, momentum, sector_fig, breakdown_fig, monthly_vol, month_change)
+    # TAB 4 CONTENT        
+            with tab4:
+                st.header("Recommendations", divider="grey", help="Recommendations and metrics for up to 4 tickers from user input.")
+
+                col1, col2, col3, col4, col5 = st.columns(5)
+                input_1 = col1.text_input(label="Ticker 1", help="Enter a ticker", key="input1")
+                input_2 = col2.text_input(label="Ticker 2 (Optional)", help="Enter a ticker", key="input2")
+                input_3 = col3.text_input(label="Ticker 3 (Optional)", help="Enter a ticker", key="input3")
+                input_4 = col4.text_input(label="Ticker 4 (Optional)", help="Enter a ticker", key="input4")
                 
+                # Analyze button to enter info from input bars
+                if col5.button("Analyze"):
+                    new_inputs = []
+                    if input_1 != "":
+                        new_inputs.append(input_1)
+                    if input_2 != "":
+                        new_inputs.append(input_2)
+                    if input_3 != "":
+                        new_inputs.append(input_3)
+                    if input_4 != "":
+                        new_inputs.append(input_4)
+                    
+                    # Print metrics for each entered investment
+                    if new_inputs:
+                        new_input_metrics, new_input_prices = ticker_analysis.new_ticker_info(new_inputs)
+                        last_year_df, all_ret_df = compute_rec_metrics(new_input_prices, returns_df)
+                        st.subheader("Stock Prices")
+                        st.line_chart(new_input_prices, x_label="Date", y_label="Price ($)")
+                        st.subheader("Portfolio & User Input Returns")
+                        st.line_chart(last_year_df, x_label="Date", y_label="Returns (%)")
+                        format_tab4_metrics(new_input_metrics, all_ret_df)
+                
+                # Clear button to clear inputs under "Analyze" button
+                col5.button("Clear", on_click=on_click)
+                        
                 
             
 def create_portfolio(upload_file):
@@ -189,7 +223,7 @@ def create_price_data(portfolio):
         else:
             price_data[ticker] = data
             
-        #Store the historical data in a dataframe named price_data_df
+    #Store the historical data in a dataframe named price_data_df
     price_data_df = pd.concat(price_data, axis=1)
     price_data_df.columns = price_data_df.columns.get_level_values(0)
     price_data_df.ffill(inplace=True)
@@ -313,7 +347,6 @@ def classify_portfolio(tickers, weights, features_list):
         )
     )
     
-    
     # Label breakdown indices with their investment style
     label_map = {
         0: "Blend", 
@@ -362,12 +395,54 @@ def format_tab3(beta, vol, momentum, sector_fig, breakdown_fig, monthly_vol, mon
                    The blended style combines both growth and value investments, which offers diversification benefits due to its mix of capital gains and stability.
                    """)
              
-         
-
 def create_risk_model(tickers, weights):
     monthly_vol, month_change = risk_model.get_risk_model(tickers, weights)
     
     return monthly_vol, month_change
+
+def on_click():
+    st.session_state.input1 = ""
+    st.session_state.input2 = ""
+    st.session_state.input3 = ""
+    st.session_state.input4 = ""
+    
+def format_tab4_metrics(input_metrics, all_ret_df):
+    for k,v in input_metrics.items():
+        annual_ret = round((v["annual_ret"] * 100), 2)
+        vol = round((v["vol"] * 100), 2)
+        sharpe = round(v["sharpe"], 3)
+        momentum = round((v["momentum"] * 100), 2)
+        dd = round((v["drawdown"] * 100), 2)
+        sparkline = all_ret_df[k].dropna()
+        yf_rec = v["yf_rec"]
+        
+        if k == "SPY":
+            st.markdown("#### S&P 500 Metrics (Benchmark)")
+
+            col1, col2, col3, col4, col5 = st.columns(5)
+            col1.metric("Return", f"{annual_ret}%", chart_data=sparkline, help="Annual return of S&P 500")
+            col2.metric("Volatility", f"{vol}%", help="Annualized volatility of S&P 500") 
+            col3.metric("Sharpe Ratio", sharpe)
+            col4.metric("Momentum", f"{momentum}%")
+            col5.metric("Max Drawdown", f"{dd}%")
+        else:
+            score = round(v["score"], 3)
+            signal = v["signal"]
+            st.markdown(f"#### {k} Metrics")
+            st.markdown(f"##### **Our Evaluation:**")
+            st.markdown(f"Score: {score}")
+            st.markdown(f"Rating: {signal}")
+                
+            st.markdown(f"##### **Yahoo Finance's Evaluation:**")
+            st.markdown(f"{yf_rec}")
+                
+            col1, col2, col3, col4, col5 = st.columns(5)
+            col1.metric("Return", f"{annual_ret}%", chart_data=sparkline, help="Annual return")
+            col2.metric("Volatility", f"{vol}%", help="Annualized volatility") 
+            col3.metric("Sharpe Ratio", sharpe)
+            col4.metric("Momentum", f"{momentum}%")
+            col5.metric("Max Drawdown", f"{dd}%")
+        st.divider()
 
     
 if __name__=="__main__":

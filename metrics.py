@@ -29,3 +29,21 @@ def compute_metrics(price_data_df, portfolio, returns_df):
     st.line_chart(stock_values_df, x_label="Date", y_label="Value ($)")
     
     return weights, initial_val, portfolio_returns
+
+def compute_rec_metrics(new_input_prices, returns_df):
+    # Get returns data for user's inputted investments
+    new_prices_df = pd.concat(new_input_prices, axis=1)
+    new_prices_df.columns = new_prices_df.columns.get_level_values(0)
+    new_prices_df.ffill(inplace=True)
+    new_input_ret = new_prices_df.pct_change()
+    new_input_ret.index = new_input_ret.index.tz_localize(None)
+    
+    # Combine returns data from user's portfolio against inputted investments's returns for only 1 year
+    all_ret_df = pd.concat([new_input_ret, returns_df], axis=1)
+    all_ret_df = all_ret_df.sort_index()
+    # Make all return values multiplied by 100 so they're in percent form
+    all_ret_df = all_ret_df * 100
+    one_yr = pd.Timestamp.now() - pd.DateOffset(years=1)
+    last_year_df = all_ret_df.loc[one_yr:]
+    
+    return last_year_df, all_ret_df

@@ -1,19 +1,11 @@
 import pandas as pd
 import yfinance as yf
 import numpy as np
+import streamlit as st
 from sklearn.preprocessing import StandardScaler
 from keras.layers import LSTM, Dense, Dropout
 from keras import Input
 from keras.models import Sequential
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import LabelEncoder
-from keras.layers import Embedding, Bidirectional
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import classification_report
-from sklearn.utils.class_weight import compute_class_weight
-import tensorflow as tf
-from keras.preprocessing.sequence import pad_sequences
-from keras.layers import TextVectorization
 
 def create_sequences(data, target, window_size=30):
     X, y = [], []
@@ -24,6 +16,7 @@ def create_sequences(data, target, window_size=30):
     
     return np.array(X), np.array(y)
 
+@st.cache_data
 def train_model(X, y):
     # Fit scaler for X and y on training data
     scaler_X = StandardScaler()
@@ -58,7 +51,7 @@ def train_model(X, y):
     
     return model, scaler_X, scaler_y
 
-
+@st.cache_data
 def get_risk_model(tickers, weights):
     predicted_vols = {}
     X_all, y_all = [], []

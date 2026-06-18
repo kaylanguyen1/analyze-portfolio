@@ -134,19 +134,12 @@ def compute_mo_vol(ticker):
     
     if len(data) < 60:
         return 0.0, 0.0
-
-    #price_now = data["Close"].iloc[-1]
-    #price_past = data["Close"].iloc[-60]
-    #price_now = float(price_now.iloc[0])
-    #price_past = float(price_past.iloc[0])
     
     close = data["Close"]
     if isinstance(close, pd.DataFrame):
         close = close.iloc[:, 0]
     price_now = float(close.iloc[-1])
     price_past = float(close.iloc[-60])
-    print("price_now: ", price_now)
-    print("price_past: ", price_past)
     momentum = (price_now / price_past) - 1
     
     returns = data["Close"].pct_change(fill_method=None)
