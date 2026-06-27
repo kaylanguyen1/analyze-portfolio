@@ -321,7 +321,6 @@ def recs_as_metric(recs_list, tickers):
             else:
                 col.empty()
 
-@st.cache_data
 def classify_portfolio(tickers, weights, features_list):
     beta, volatility, momentum, sectors, breakdown = model.get_portfolio_classification(tickers, weights, features_list)
     
@@ -395,6 +394,7 @@ def format_tab3(beta, vol, momentum, sector_fig, breakdown_fig, monthly_vol, mon
                    The blended style combines both growth and value investments, which offers diversification benefits due to its mix of capital gains and stability.
                    """)
              
+@st.cache_data
 def create_risk_model(tickers, weights):
     monthly_vol, month_change = risk_model.get_risk_model(tickers, weights)
     

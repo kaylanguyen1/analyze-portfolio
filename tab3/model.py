@@ -141,5 +141,6 @@ def classify(features, weights, model):
         port_sector += np.array(features[i]['sector_vector']) * weights[i]
     
     port_sector = port_sector.astype(float)
+    print("port_momentum: ", port_momentum)
     
     return port_beta, port_vol, port_momentum, port_sector, breakdown

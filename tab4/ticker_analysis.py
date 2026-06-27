@@ -210,7 +210,7 @@ def get_stock_score(score):
     if score > 0.6:
         return "Strong Buy"
     elif score > 0.20:
-        return "Moderate Buy"
+        return "Buy"
     elif score > -0.20:
         return "Hold"
     elif score > -0.60:

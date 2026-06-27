@@ -3,7 +3,6 @@ import yfinance as yf
 import numpy as np
 import streamlit as st
 
-@st.cache_data
 def get_ticker_info(tickers):
     all_info = []
     for ticker in tickers:
@@ -145,6 +144,7 @@ def compute_mo_vol(ticker):
     price_now = float(close.iloc[-1])
     price_past = float(close.iloc[-60])
     momentum = (price_now / price_past) - 1
+    print("momentum: ", momentum)
     
     returns = data["Close"].pct_change(fill_method=None)
     vol = returns.std() * np.sqrt(252)
