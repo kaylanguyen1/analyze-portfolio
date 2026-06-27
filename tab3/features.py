@@ -135,6 +135,10 @@ def standard_region(info_dict):
 def compute_mo_vol(ticker):
     data = yf.download(ticker, period="6mo")
     
+    # Checks for momentum
+    print(data.tail())
+    print(data.columns)
+    
     if len(data) < 60:
         return 0.0, 0.0
     
@@ -143,6 +147,15 @@ def compute_mo_vol(ticker):
         close = close.iloc[:, 0]
     price_now = float(close.iloc[-1])
     price_past = float(close.iloc[-60])
+    
+    #Checks for momentum
+    print(type(close))
+    print(close.tail())
+    print(close.iloc[-1])
+    print(close.iloc[-60])
+    print(pd.isna(close.iloc[-1]))
+    print(pd.isna(close.iloc[-60]))
+    
     momentum = (price_now / price_past) - 1
     print("momentum: ", momentum)
     
