@@ -162,7 +162,6 @@ def compute_mo_vol(ticker):
     
     returns = close.pct_change(fill_method=None).dropna()
     vol = float(returns.std() * np.sqrt(252))
-    vol = vol.iloc[0]
     
     return float(momentum), vol
 
