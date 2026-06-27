@@ -135,18 +135,19 @@ def standard_region(info_dict):
 def compute_mo_vol(ticker):
     data = yf.download(ticker, period="6mo")
     
-    # Checks for momentum
-    print(data.tail())
-    print(data.columns)
-    
     if len(data) < 60:
         return 0.0, 0.0
     
     close = data["Close"]
     if isinstance(close, pd.DataFrame):
         close = close.iloc[:, 0]
+    close = close.dropna().astype(float)
+    
+    if len(close) < 60:
+        return 0.0, 0.0
+    
     price_now = float(close.iloc[-1])
-    price_past = float(close.iloc[-60])
+    price_past = float(close.iloc[-60]) - 1
     
     #Checks for momentum
     print(type(close))
@@ -156,14 +157,14 @@ def compute_mo_vol(ticker):
     print(pd.isna(close.iloc[-1]))
     print(pd.isna(close.iloc[-60]))
     
-    momentum = (price_now / price_past) - 1
+    momentum = (price_now / price_past) 
     print("momentum: ", momentum)
     
-    returns = data["Close"].pct_change(fill_method=None)
+    returns = close.pct_change(fill_method=None).dropna()
     vol = returns.std() * np.sqrt(252)
     vol = float(vol.iloc[0])
     
-    return momentum, vol
+    return float(momentum), vol
 
 def standard_sectors(info_dict):
     sectors = ["technology", "financial_services", "consumer_cyclical", "communication_services", "healthcare", "industrials", 
