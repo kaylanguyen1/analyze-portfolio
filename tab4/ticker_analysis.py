@@ -102,18 +102,23 @@ def get_financials(ticker, spy_metrics, spy_ret):
 # Compute annual returns, sharpe ratio, momentum, max drawdown and return + log returns
 def get_metrics(ticker):
     hist = ticker.history(period="5y")
-    prices = hist["Close"]
+    prices = (hist["Close"].dropna().astype(float))
+    print("is prices na: ", prices.isna().sum())
     log_ret = np.log(prices).diff().dropna()
     annual_ret = np.exp(log_ret.mean() * 252) - 1
     vol = log_ret.std() * np.sqrt(252)
     
     sharpe = (annual_ret - risk_free) / (vol + 1e-8)
     
+    print("Number of prices: ", len(prices))
+    print("tail: ", prices.tail())
+    print(prices.iloc[-1])
+    print(prices.iloc[-252])
     # Momentum can be 12, 6, or 3 month depending on data availability
     if len(prices) > 252:
         momentum = prices.iloc[-1] / prices.iloc[-252] - 1
     elif len(prices) > 126:
-        momentum = prices.iloc[-1] / prices.iloc[-252] - 1
+        momentum = prices.iloc[-1] / prices.iloc[-126] - 1
     elif len(prices) > 60:
         momentum = prices.iloc[-1] / prices.iloc[-60] - 1
     else:
