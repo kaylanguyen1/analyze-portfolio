@@ -321,6 +321,7 @@ def recs_as_metric(recs_list, tickers):
             else:
                 col.empty()
 
+@st.cache_data
 def classify_portfolio(tickers, weights, features_list):
     beta, volatility, momentum, sectors, breakdown = model.get_portfolio_classification(tickers, weights, features_list)
     
@@ -335,7 +336,7 @@ def classify_portfolio(tickers, weights, features_list):
                                              "#50C878", "#AFE1AF", "#AAFF00",
                                              "#4F7942", "#00A36C", "#98FB98",
                                              "#B4C424", "#009E60"])
-    sector_fig.update_traces(textinfo="label")
+    #sector_fig.update_traces(textinfo="label")
     sector_fig.update_traces(hovertemplate="%{label}: %{value:.3f}%")
     sector_fig.update_layout(
         legend=dict(

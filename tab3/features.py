@@ -149,14 +149,6 @@ def compute_mo_vol(ticker):
     price_now = float(close.iloc[-1])
     price_past = float(close.iloc[-60]) - 1
     
-    #Checks for momentum
-    print(type(close))
-    print(close.tail())
-    print(close.iloc[-1])
-    print(close.iloc[-60])
-    print(pd.isna(close.iloc[-1]))
-    print(pd.isna(close.iloc[-60]))
-    
     momentum = (price_now / price_past) 
     print("momentum: ", momentum)
     
