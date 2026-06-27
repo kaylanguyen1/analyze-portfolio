@@ -161,8 +161,8 @@ def compute_mo_vol(ticker):
     print("momentum: ", momentum)
     
     returns = close.pct_change(fill_method=None).dropna()
-    vol = returns.std() * np.sqrt(252)
-    vol = float(vol.iloc[0])
+    vol = float(returns.std() * np.sqrt(252))
+    vol = vol.iloc[0]
     
     return float(momentum), vol
 
