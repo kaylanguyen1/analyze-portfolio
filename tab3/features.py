@@ -30,6 +30,7 @@ def get_stock_info(ticker, ticker_info, info_dict):
     info_dict['trailingPE'] = ticker_info.get('trailingPE', 'N/A')
     info_dict['marketCap'] = ticker_info.get('marketCap', 'N/A')
     info_dict['priceToBook'] = ticker_info.get('priceToBook', 'N/A')
+    print(info_dict)
 
     return standardize_stocks(ticker, info_dict)
     
@@ -43,9 +44,12 @@ def standardize_stocks(ticker, info_dict):
     
     pe = info_dict['trailingPE']
     pb = info_dict['priceToBook']
-    if pe and pb:
+    if pe != "N/A" and pb != "N/A":
         growth = (pe / 25) + (pb / 5)
         value = 1 / (growth + 1e-6)
+    else:
+        growth = "N/A"
+        value = "N/A"
         
     features['market_cap_log'] = marketCap
     features['growth_score'] = growth
@@ -154,12 +158,16 @@ def standard_sectors(info_dict):
     
     sec_vec = [0.0] * len(sectors)
     sector = info_dict['sector']
+    
     if isinstance(sector, dict):
         for i, s in enumerate(sectors):
             sec_vec[i] = sector.get(s, 0.0)
     else:
-        sector = sector.lower()
-        sec_vec[sectors.index(sector)] = 1.0
+        sector = sector.lower().replace(" ", "_")
+        if sector in sectors:
+            sec_vec[sectors.index(sector)] = 1.0
+        else:
+            print(f"Unknown sector: {sector}")
         
     return sec_vec
 
