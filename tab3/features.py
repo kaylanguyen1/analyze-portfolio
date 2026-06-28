@@ -3,6 +3,7 @@ import yfinance as yf
 import numpy as np
 import streamlit as st
 
+@st.cache_data
 def get_ticker_info(tickers):
     all_info = []
     for ticker in tickers:

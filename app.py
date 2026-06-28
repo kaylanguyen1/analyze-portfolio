@@ -331,21 +331,8 @@ def classify_portfolio(tickers, weights, features_list):
     sectors_dict = dict(zip(sector_names, sectors.tolist()))
     sectors_df = pd.DataFrame(list(sectors_dict.items()), columns=["Sector", "Percent"])
     sectors_df["Percent"] = (sectors_df["Percent"] * 100).round(3)
-    sector_fig = px.pie(sectors_df, values="Percent", names="Sector", 
-                    color_discrete_sequence=["#40826D", "#93C572", "#478778",
-                                             "#50C878", "#AFE1AF", "#AAFF00",
-                                             "#4F7942", "#00A36C", "#98FB98",
-                                             "#B4C424", "#009E60"])
-    #sector_fig.update_traces(textinfo="label")
-    sector_fig.update_traces(hovertemplate="%{label}: %{value:.3f}%")
-    sector_fig.update_layout(
-        legend=dict(
-            x=1,
-            xanchor='left',
-            y=1,
-            yanchor='top'
-        )
-    )
+    sector_fig = px.bar(sectors_df, y="Percent", x="Sector", color="Sector")
+
     
     # Label breakdown indices with their investment style
     label_map = {
@@ -385,6 +372,9 @@ def format_tab3(beta, vol, momentum, sector_fig, breakdown_fig, monthly_vol, mon
     with col4:
         st.subheader("Portfolio Sector Breakdown", divider="gray", help="Sector breakdown of entire portfolio.")
         st.plotly_chart(sector_fig)
+        st.caption("""According to Yahoo Finance, there are currently 11 sectors stocks can be classified into. Spreading your investments
+                   across different, uncorrelated industry sectors helps diversify your portfolio, helping mitigate risk and smooth
+                   portfolio volatility.""")
     
     with col5:
         st.subheader("Portfolio Classification", divider="gray", help="Investments can be classified by their growth potential, valuation, or a mix of both. The below classification was created using a Random Forest algorithm, where each individual investment was classified by a model using its features.")
@@ -395,7 +385,6 @@ def format_tab3(beta, vol, momentum, sector_fig, breakdown_fig, monthly_vol, mon
                    The blended style combines both growth and value investments, which offers diversification benefits due to its mix of capital gains and stability.
                    """)
              
-@st.cache_data
 def create_risk_model(tickers, weights):
     monthly_vol, month_change = risk_model.get_risk_model(tickers, weights)
     
@@ -414,14 +403,14 @@ def format_tab4_metrics(input_metrics, all_ret_df):
         sharpe = round(v["sharpe"], 3)
         momentum = round((v["momentum"] * 100), 2)
         dd = round((v["drawdown"] * 100), 2)
-        sparkline = all_ret_df[k].dropna()
         yf_rec = v["yf_rec"]
+        yf_recs_df = v["yf_recs_df"]
         
         if k == "SPY":
-            st.markdown("#### S&P 500 Metrics (Benchmark)")
+            st.markdown("#### S&P 500 Metrics (Benchmark)", help="The S&P 500 (SPY) is used as a benchmark for computing our scores due to it being widely used to judge the overall economy; however, it can be an inaccurate measure of portfolio return due to not reflecting all kinds of assets other than stocks and being disproportionately weighted toward larger companies.")
 
             col1, col2, col3, col4, col5 = st.columns(5)
-            col1.metric("Return", f"{annual_ret}%", chart_data=sparkline, help="Annual return of S&P 500")
+            col1.metric("Return", f"{annual_ret}%", help="Annual return of S&P 500")
             col2.metric("Volatility", f"{vol}%", help="Annualized volatility of S&P 500") 
             col3.metric("Sharpe Ratio", sharpe)
             col4.metric("Momentum", f"{momentum}%")
@@ -430,19 +419,31 @@ def format_tab4_metrics(input_metrics, all_ret_df):
             score = round(v["score"], 3)
             signal = v["signal"]
             st.markdown(f"#### {k} Metrics")
-            st.markdown(f"##### **Our Evaluation:**")
-            st.markdown(f"Score: {score}")
-            st.markdown(f"Rating: {signal}")
+            col_eval1, col_eval2 = st.columns([1, 3])
+            with col_eval1:
+                st.markdown(f"##### **Our Evaluation:**", help="Score is computed for all investments based on return, volatility, sharpe ratio, momentum, and maximum drawdown, where all of these values are compared to the S&P 500's values. For stocks, additional metrics like a stock's sortino ratio, return on equity (ROE), and price/earnings-to-growth ratio (PEG) are also factored in. For funds, the investment's information ratio is factored in.")
+                st.markdown(f"Score: {score}")
+                st.markdown(f"Rating: {signal}")
                 
-            st.markdown(f"##### **Yahoo Finance's Evaluation:**")
-            st.markdown(f"{yf_rec}")
+            with col_eval2:
+                st.markdown(f"##### **Yahoo Finance's Evaluation:**", help="Yahoo finance's recommendations come from multiple analysts, where differences can be attributed to different values, assumptions, and more.")
+                st.markdown(f"{yf_rec}")
+                if len(yf_recs_df.columns) > 0:
+                    st.dataframe(yf_recs_df, hide_index=True, column_config={
+                        "period": "Period",
+                        "strongBuy": "Strong Buy",
+                        "buy": "Buy",
+                        "hold": "Hold",
+                        "sell": "Sell",
+                        "strongSell": "Strong Sell"
+                    })
                 
             col1, col2, col3, col4, col5 = st.columns(5)
-            col1.metric("Return", f"{annual_ret}%", chart_data=sparkline, help="Annual return")
+            col1.metric("Return", f"{annual_ret}%", help="Annual return")
             col2.metric("Volatility", f"{vol}%", help="Annualized volatility") 
-            col3.metric("Sharpe Ratio", sharpe)
-            col4.metric("Momentum", f"{momentum}%")
-            col5.metric("Max Drawdown", f"{dd}%")
+            col3.metric("Sharpe Ratio", sharpe, help="Sharpe ratio is computed using the annual returns and a risk-free rate of 0.02.")
+            col4.metric("Momentum", f"{momentum}%", help="Based on how much price data is available, momentum can be calculated from either 3, 6, or 12 months.")
+            col5.metric("Max Drawdown", f"{dd}%", help="Maximum drawdown (MDD) measures the most severe decline in the value of an investment, and it highlights and investment's downside risk and potential volatility.")
         st.divider()
 
     

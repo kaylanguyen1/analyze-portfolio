@@ -67,31 +67,28 @@ def get_financials(ticker, spy_metrics, spy_ret):
         stock_score, stock_weight = 0, 0
         roe = var_info.get("returnOnEquity", "N/A")
         peg = var_info.get("pegRatio", "N/A")
-        low = var_info.get("fiftyTwoWeekLow", "N/A")
-        high = var_info.get("fiftyTwoWeekHigh", "N/A")
-        market_score = (0.4 * sharpe_diff) + (0.3 * momentum_diff) + (0.2 * drawdown_diff) + (0.1 * ret_diff)
+        market_score = (0.2 * sharpe_diff) + (0.25 * momentum_diff) + (0.15 * drawdown_diff) + (0.25 * ret_diff) + (0.15 * vol_diff)
 
-        sortino_score, roe_score, peg_score, price_score = stock_metric(curr_metrics['annual_ret'], log_ret, roe, peg, low, high, curr_price)
+        sortino_score, roe_score, peg_score = stock_metric(curr_metrics['annual_ret'], log_ret, roe, peg, curr_price)
         
+        if sortino_score != 0:
+            stock_score += 0.3 * sortino_score
+            stock_weight += 0.3
         if roe != "N/A":
             stock_score += 0.3 * roe_score
             stock_weight += 0.3
         if peg != "N/A":
-            stock_score += 0.25 * peg_score
-            stock_weight += 0.25
-        if high != "N/A" and low != "N/A":
-            stock_score += 0.2 * price_score
-            stock_weight += 0.2
-        stock_score += 0.25 * sortino_score
-        stock_weight += 0.25
+            stock_score += 0.4 * peg_score
+            stock_weight += 0.4
+
         stock_score /= stock_weight
         
-        score = (0.7 * market_score) + (0.3 * stock_score)
+        score = (0.4 * market_score) + (0.6 * stock_score)
         signal = get_stock_score(score)
         
     else:
         info_ratio = fund_metric(spy_ret, log_ret)
-        score = (0.3 * sharpe_diff) + (0.25 * momentum_diff) + (0.15 * drawdown_diff) + (0.15 * ret_diff) + (0.15 * info_ratio)
+        score = (0.15 * sharpe_diff) + (0.2 * momentum_diff) + (0.1 * drawdown_diff) + (0.25 * ret_diff) + (0.15 * info_ratio) + (0.15 * vol_diff)
         signal = get_fund_score(score)
         
     curr_metrics["score"] = float(score)
@@ -103,17 +100,12 @@ def get_financials(ticker, spy_metrics, spy_ret):
 def get_metrics(ticker):
     hist = ticker.history(period="5y")
     prices = (hist["Close"].dropna().astype(float))
-    print("is prices na: ", prices.isna().sum())
     log_ret = np.log(prices).diff().dropna()
     annual_ret = np.exp(log_ret.mean() * 252) - 1
     vol = log_ret.std() * np.sqrt(252)
     
     sharpe = (annual_ret - risk_free) / (vol + 1e-8)
     
-    print("Number of prices: ", len(prices))
-    print("tail: ", prices.tail())
-    print(prices.iloc[-1])
-    print(prices.iloc[-252])
     # Momentum can be 12, 6, or 3 month depending on data availability
     if len(prices) > 252:
         momentum = prices.iloc[-1] / prices.iloc[-252] - 1
@@ -149,20 +141,22 @@ def get_metrics(ticker):
         "sharpe": float(sharpe), 
         "momentum": float(momentum), 
         "drawdown": float(max_drawdown),
+        "yf_recs_df": yf_recs_df,
         "yf_rec": yf_rec
     }
     
     return res, log_ret, prices
 
 # If investment is a stock, compute and normalize its sortino, peg ratio, roe, and 52-week position score
-def stock_metric(annual_ret, log_ret, roe, peg, low, high, curr_price):
+def stock_metric(annual_ret, log_ret, roe, peg, curr_price):
     downside = log_ret[log_ret < 0]
     downside_vol = downside.std() * np.sqrt(252)
     sortino = (annual_ret - risk_free) / (downside_vol + 1e-8)
     sortino = np.clip(sortino / 2, -1, 1)
+
     
     if roe != "N/A":
-        roe_score = np.clip(roe / 0.20, -1, 1)
+        roe_score = np.tanh(roe / 0.30)
     else:
         roe_score = 0
     
@@ -171,14 +165,7 @@ def stock_metric(annual_ret, log_ret, roe, peg, low, high, curr_price):
     else:
         peg_score = 0
         
-    if high != "N/A" and low != "N/A":
-        if high > low:
-            pos = (curr_price - low) / (high - low)
-            price_score = np.clip(1 - (2 * pos), -1, 1)
-        else:
-            price_score = 0
-        
-    return float(sortino), float(roe_score), float(peg_score), float(price_score)
+    return float(sortino), float(roe_score), float(peg_score)
 
 # If investment is a fund/ETF, compute information ratio and return
 def fund_metric(spy_ret, log_ret):
@@ -214,7 +201,7 @@ def get_stock_score(score):
     elif score > -0.20:
         return "Hold"
     elif score > -0.60:
-        return "Weak Sell"
+        return "Sell"
     else:
         return "Strong Sell"
     
