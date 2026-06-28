@@ -443,7 +443,7 @@ def format_tab4_metrics(input_metrics, all_ret_df):
             col2.metric("Volatility", f"{vol}%", help="Annualized volatility") 
             col3.metric("Sharpe Ratio", sharpe, help="Sharpe ratio is computed using the annual returns and a risk-free rate of 0.02.")
             col4.metric("Momentum", f"{momentum}%", help="Based on how much price data is available, momentum can be calculated from either 3, 6, or 12 months.")
-            col5.metric("Max Drawdown", f"{dd}%", help="Maximum drawdown (MDD) measures the most severe decline in the value of an investment, and it highlights and investment's downside risk and potential volatility.")
+            col5.metric("Max Drawdown", f"{dd}%", help="Maximum drawdown (MDD) measures the most severe decline in the value of an investment, highlighting an investment's downside risk and potential volatility.")
         st.divider()
 
     
