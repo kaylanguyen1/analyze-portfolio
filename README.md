@@ -77,28 +77,51 @@ A full-stack portfolio analytics platform built with Python, Streamlit, yfinance
 # Project Structure
 
 `analyze-portfolio/`
+
 │
+
 ├── `.streamlit/`
+
 │   └── `config.toml`
+
 │
+
 ├── `tab3`/
+
 │   ├── `__init___.py`
+
 │   ├── `features.py`
+
 │   ├── `model.py`
+
 │   ├── `risk_model.py`
+
 │
+
 ├── `tab4`/
+
 │   ├── `__init__.py`
+
 │   └── `ticker_analysis.py`
+
 │
+
 ├── `app.py`
+
 ├── `holdings.csv`
+
 ├── `metrics.py`
+
 ├── `optimize.py` 
+
 ├── `recs.py`
+
 ├── `requirements.txt`
+
 ├── `runtime.txt`
+
 └── `README.md`
+
 
 # File Overview
 
@@ -303,6 +326,10 @@ streamlit run app.py
 - Integrate additional fundamental indicators such as earnings growth, analyst estimate revisions, and free cash flow for enhanced recommendation models
 
 - Add more forward-looking evaluation and other more complex features for analyzing stocks
+
+# Sources
+
+I referenced information, vocabulary, and concepts from sources such as the University of Washington, Yahoo Finance, Morningstar, Fidelity, Vanguard, and Charles Schwab. The recommendations, analysis, and calculations may not be perfect; this was purely an attempt to learn more about investing and to provide a possible resource for those who may be starting out in investing as well!
 
 # License
 
