@@ -77,29 +77,29 @@ A full-stack portfolio analytics platform built with Python, Streamlit, yfinance
 # Project Structure
 
 ```text
-`analyze-portfolio/`
+analyze-portfolio/
 │
-├── `.streamlit/`
-│   └── `config.toml`
+├── .streamlit/
+│   └── config.toml
 │
-├── `tab3`/
-│   ├── `__init___.py`
-│   ├── `features.py`
-│   ├── `model.py`
-│   ├── `risk_model.py`
+├── tab3/
+│   ├── __init___.py
+│   ├── features.py
+│   ├── model.py
+│   ├── risk_model.py
 │
-├── `tab4`/
-│   ├── `__init__.py`
-│   └── `ticker_analysis.py`
+├── tab4/
+│   ├── __init__.py
+│   └── ticker_analysis.py
 │
-├── `app.py`
-├── `holdings.csv`
-├── `metrics.py`
-├── `optimize.py` 
-├── `recs.py`
-├── `requirements.txt`
-├── `runtime.txt`
-└── `README.md`
+├── app.py
+├── holdings.csv
+├── metrics.py
+├── optimize.py
+├── recs.py
+├── requirements.txt
+├── runtime.txt
+└── README.md
 ```
 
 
